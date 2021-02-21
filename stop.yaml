@@ -1,6 +1,7 @@
 ---
 - name: check instances
   hosts: localhost
+  gather_facts: no
   vars_files:
   - aws_keys.yml
   vars:

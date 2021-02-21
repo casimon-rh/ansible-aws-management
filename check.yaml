@@ -1,6 +1,7 @@
 ---
 - name: check instances
   hosts: localhost
+  gather_facts: no
   vars_files:
   - aws_keys.yml
   vars:
@@ -16,5 +17,7 @@
     register: ec2_info
   - name: Print info
     debug:
-      msg: "{{item}}"
-    loop: "{{ec2_info | community.general.json_query('instances[*].instance_id')}}"
+      msg: "{{ item.instance_id }} is {{ item.state.name }}"
+    loop: "{{ ec2_info.instances }}"
+    loop_control:
+      label: "{{ item.instance_id }}"
