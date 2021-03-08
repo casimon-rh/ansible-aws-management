@@ -1,1 +1,3 @@
 aws_keys.yml
+ansible_plugins/*
+!ansible_plugins/aws_ec2.yml.example

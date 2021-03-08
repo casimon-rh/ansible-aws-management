@@ -17,7 +17,7 @@
     register: ec2_info
   - name: Print info
     debug:
-      msg: "{{ item.instance_id }} is {{ item.state.name }}"
+      msg: "{{ item.instance_id }} ({{ item.tags.Name }}) is {{ item.state.name }} on ip {{ item.public_ip_address }}"
     loop: "{{ ec2_info.instances }}"
     loop_control:
       label: "{{ item.instance_id }}"
