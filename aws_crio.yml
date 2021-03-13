@@ -1,0 +1,85 @@
+---
+- name: crio
+  hosts: all
+  become: yes
+  user: simon
+  vars:
+    k8s_pkgs:
+      - kubelet
+      - kubeadm
+      - kubectl
+    sysctl_params:
+      - net.bridge.bridge-nf-call-iptables
+      - net.ipv4.ip_forward
+      - net.bridge.bridge-nf-call-ip6tables
+  tasks:
+    - name: update
+      apt:
+        name: "*"
+        state: latest
+        update_cache: yes
+    - name: modprobe
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+    - name: sysctl
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "1"
+        sysctl_set: yes
+        reload: yes
+      loop: "{{ sysctl_params }}"
+    - name: repo
+      apt_repository:
+        repo: ppa:projectatomic/ppa
+    - name: update
+      apt:
+        pkg:
+          - software-properties-common
+          - cri-o-1.15
+        state: latest
+        update_cache: yes
+    - name: which conmon
+      command: which conmon
+      register: conmon_location
+    - name: crio config conmon
+      replace:
+        path: /etc/crio/crio.conf
+        regexp: "^conmon =.*"
+        replace: "conmon = {{ conmon_location.stdout }}"
+      #TODO: Missing crio repos
+    - name: systemd daemon reload
+      systemd:
+        daemon_reload: yes
+    - name: crio service
+      service:
+        enabled: yes
+        name: crio
+        status: started
+    - name: kubelet
+      copy:
+        dest: /etc/default/kubelet
+        content: >
+          KUBELET_EXTRA_ARGS=--feature-gates="AllAlpha=false,RunAsGroup=true"--container-runtime=remote--cgroup-driver=systemd--container-runtime-endpoint='unix:///var/run/crio/crio.sock'--runtime-request-timeout=5m
+      #! Kubernetes config
+    - name: k8s repo
+      apt_repository:
+        repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+    - name: apt gpg key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+    - name: install kubeadm kubelet kubectl
+      apt:
+        pkg: "{{ k8s_pkgs | '='.join((item, '1.19.1-00')) | list }}"
+        update_cache: yes
+    - name: holds
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop: "{{ k8s_pkgs }}"
+
