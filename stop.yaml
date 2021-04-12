@@ -14,6 +14,7 @@
       region: "{{my_region}}"
       filters:
         "tag:name": kubernetes
+        instance-state-name: running
     register: ec2_info
   - name: Stop instances
     community.aws.ec2_instance:
